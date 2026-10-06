@@ -96,4 +96,33 @@ void main() {
     await tester.pump();
     await openCard(tester);
   });
+
+  testWidgets('Envelope and scroll have their own opening', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 3200);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Envelope'));
+    await tester.pump();
+    expect(find.text('Envelope colour'), findsOneWidget);
+    expect(find.text('Opening animation'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Champagne paper'));
+    await tester.tap(find.bySemanticsLabel('Silver seal'));
+    await tester.pump();
+    await openCard(tester);
+
+    await tester.tap(find.byTooltip('Back to design'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Scroll'));
+    await tester.pump();
+    expect(find.text('Ribbon colour'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Blush ribbon'));
+    await tester.pump();
+    await openCard(tester);
+  });
 }

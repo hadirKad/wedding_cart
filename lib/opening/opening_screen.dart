@@ -3,14 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:wedding_cart/card_config.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
 import 'package:wedding_cart/opening/door_half.dart';
+import 'package:wedding_cart/opening/envelope_painter.dart';
 import 'package:wedding_cart/opening/gatefold_painter.dart';
+import 'package:wedding_cart/opening/scroll_painter.dart';
 import 'package:wedding_cart/wedding_card_screen.dart';
 
 /// The wedding card, closed in the chosen [CardConfig.style]: a photo tied
-/// with a bow, or a gatefold held by a wax seal.
+/// with a bow, a gatefold or envelope held by a wax seal, or a tied scroll.
 ///
-/// Tapping unties the bow or cracks the seal, opens the cover in the chosen
-/// [CardConfig.opening] style and reveals the [WeddingCardScreen] behind it.
+/// Tapping opens it and reveals the [WeddingCardScreen]. Covers that split
+/// down the middle open in the chosen [CardConfig.opening] style; the
+/// envelope and scroll have their own opening.
 class OpeningScreen extends StatefulWidget {
   const OpeningScreen({super.key, required this.config});
 
@@ -24,7 +27,7 @@ class _OpeningScreenState extends State<OpeningScreen>
     with TickerProviderStateMixin {
   late final AnimationController _open = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 3000),
+    duration: Duration(milliseconds: widget.config.style.splits ? 3000 : 3800),
   );
 
   /// Gentle idle pulse on the bow while waiting for a tap.
@@ -41,9 +44,14 @@ class _OpeningScreenState extends State<OpeningScreen>
     parent: _open,
     curve: const Interval(0.25, 0.75, curve: Curves.easeInOutCubic),
   );
+
+  /// Fades the card in. Covers that split reveal it as they open; the
+  /// envelope and scroll bring their own card forward first.
   late final Animation<double> _reveal = CurvedAnimation(
     parent: _open,
-    curve: const Interval(0.3, 0.9, curve: Curves.easeOutCubic),
+    curve: widget.config.style.splits
+        ? const Interval(0.3, 0.9, curve: Curves.easeOutCubic)
+        : const Interval(0.78, 1.0, curve: Curves.easeOut),
   );
 
   /// Decoded at a fixed width so the large source photos don't make the
@@ -150,6 +158,8 @@ class _OpeningScreenState extends State<OpeningScreen>
     final palette = config.bowColor.palette;
     final gatefold = config.style == CardStyle.gatefold;
 
+    if (!config.style.splits) return _buildStationery(breathe);
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -185,14 +195,50 @@ class _OpeningScreenState extends State<OpeningScreen>
     );
   }
 
+  /// The envelope and scroll, which play their whole opening in one painter.
+  Widget _buildStationery(double breathe) {
+    final config = widget.config;
+    final t = _open.value;
+    final painter = switch (config.style) {
+      CardStyle.envelope => EnvelopePainter(
+        paper: config.paper.palette,
+        wax: config.accent.palette,
+        progress: t,
+      ),
+      CardStyle.scroll => ScrollPainter(
+        paper: config.paper.palette,
+        ribbon: config.accent.palette,
+        progress: t,
+      ),
+      _ => throw StateError('${config.style} splits; use _buildOpening'),
+    };
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CustomPaint(painter: painter),
+        _buildHint(
+          t * 3,
+          breathe,
+          color: Colors.white,
+          shadow: true,
+          alignment: config.style == CardStyle.envelope
+              ? const Alignment(0, 0.62)
+              : const Alignment(0, 0.3),
+        ),
+      ],
+    );
+  }
+
   Widget _buildHint(
     double untie,
     double breathe, {
     required Color color,
     required bool shadow,
+    Alignment alignment = const Alignment(0, 0.4),
   }) {
     return Align(
-      alignment: const Alignment(0, 0.4),
+      alignment: alignment,
       child: Opacity(
         opacity: (1 - untie * 3).clamp(0.0, 1.0) * (0.6 + 0.4 * breathe),
         child: Text(
@@ -225,11 +271,12 @@ class _OpeningScreenState extends State<OpeningScreen>
         child: CustomPaint(
           painter: GatefoldPainter(
             paper: config.paper.palette,
-            wax: config.sealColor.palette,
+            wax: config.accent.palette,
             crack: untie,
           ),
         ),
       ),
+      _ => throw StateError("${config.style} doesn't split"),
     };
   }
 

@@ -6,12 +6,22 @@ enum CardStyle {
   photoBow('Photo & bow', Icons.photo_outlined),
 
   /// Two embossed cardstock panels closed with a wax seal.
-  gatefold('Gatefold', Icons.local_florist_outlined);
+  gatefold('Gatefold', Icons.local_florist_outlined),
+
+  /// A lined envelope with a wax seal; the card slides out.
+  envelope('Envelope', Icons.mail_outline),
+
+  /// A parchment scroll tied with a ribbon; it unrolls from the middle.
+  scroll('Scroll', Icons.history_edu_outlined);
 
   const CardStyle(this.label, this.icon);
 
   final String label;
   final IconData icon;
+
+  /// Whether the cover splits down the middle, so it can open with any
+  /// [OpeningStyle]. The other styles have their own opening.
+  bool get splits => this == photoBow || this == gatefold;
 }
 
 /// The photos the card can open from.
@@ -201,7 +211,7 @@ class CardConfig {
     this.bowColor = AccentColor.gold,
     this.bowStyle = BowStyle.classic,
     this.paper = PaperColor.burgundy,
-    this.sealColor = AccentColor.gold,
+    this.accent = AccentColor.gold,
     this.opening = OpeningStyle.doors,
   });
 
@@ -212,10 +222,13 @@ class CardConfig {
   final AccentColor bowColor;
   final BowStyle bowStyle;
 
-  // Used by [CardStyle.gatefold].
+  // Used by the stationery styles: gatefold, envelope and scroll.
   final PaperColor paper;
-  final AccentColor sealColor;
 
+  /// The wax seal on a gatefold or envelope; the ribbon on a scroll.
+  final AccentColor accent;
+
+  /// Only used when [CardStyle.splits].
   final OpeningStyle opening;
 
   CardConfig copyWith({
@@ -224,7 +237,7 @@ class CardConfig {
     AccentColor? bowColor,
     BowStyle? bowStyle,
     PaperColor? paper,
-    AccentColor? sealColor,
+    AccentColor? accent,
     OpeningStyle? opening,
   }) {
     return CardConfig(
@@ -233,7 +246,7 @@ class CardConfig {
       bowColor: bowColor ?? this.bowColor,
       bowStyle: bowStyle ?? this.bowStyle,
       paper: paper ?? this.paper,
-      sealColor: sealColor ?? this.sealColor,
+      accent: accent ?? this.accent,
       opening: opening ?? this.opening,
     );
   }

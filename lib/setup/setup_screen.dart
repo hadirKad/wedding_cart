@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:wedding_cart/card_config.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
+import 'package:wedding_cart/opening/envelope_painter.dart';
 import 'package:wedding_cart/opening/gatefold_painter.dart';
 import 'package:wedding_cart/opening/opening_screen.dart';
+import 'package:wedding_cart/opening/scroll_painter.dart';
 
 /// Lets the user pick the card style, its colours and the opening animation,
 /// then plays the result.
@@ -42,24 +44,38 @@ class _SetupScreenState extends State<SetupScreen> {
           const SizedBox(height: 24),
           _Section(
             title: 'Card style',
-            child: SegmentedButton<CardStyle>(
-              showSelectedIcon: false,
-              segments: [
-                for (final style in CardStyle.values)
-                  ButtonSegment(
-                    value: style,
-                    icon: Icon(style.icon),
-                    label: Text(style.label),
+            child: Column(
+              children: [
+                // Two rows of two.
+                for (var row = 0; row < CardStyle.values.length; row += 2) ...[
+                  if (row > 0) const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      for (final style
+                          in CardStyle.values.skip(row).take(2)) ...[
+                        if (style.index.isOdd) const SizedBox(width: 12),
+                        Expanded(
+                          child: _CardStyleOption(
+                            style: style,
+                            selected: style == _config.style,
+                            onTap: () =>
+                                _update(_config.copyWith(style: style)),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                ],
               ],
-              selected: {_config.style},
-              onSelectionChanged: (selection) =>
-                  _update(_config.copyWith(style: selection.single)),
             ),
           ),
-          if (_config.style == CardStyle.gatefold) ...[
+          if (_config.style != CardStyle.photoBow) ...[
             _Section(
-              title: 'Paper colour',
+              title: switch (_config.style) {
+                CardStyle.envelope => 'Envelope colour',
+                CardStyle.scroll => 'Parchment colour',
+                _ => 'Paper colour',
+              },
               child: Row(
                 children: [
                   for (final paper in PaperColor.values)
@@ -79,12 +95,13 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
             _Section(
-              title: 'Seal colour',
+              title: _config.style == CardStyle.scroll
+                  ? 'Ribbon colour'
+                  : 'Seal colour',
               child: _accentRow(
-                selected: _config.sealColor,
-                noun: 'seal',
-                onSelected: (color) =>
-                    _update(_config.copyWith(sealColor: color)),
+                selected: _config.accent,
+                noun: _config.style == CardStyle.scroll ? 'ribbon' : 'seal',
+                onSelected: (color) => _update(_config.copyWith(accent: color)),
               ),
             ),
           ] else ...[
@@ -133,23 +150,24 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
           ],
-          _Section(
-            title: 'Opening animation',
-            child: SegmentedButton<OpeningStyle>(
-              showSelectedIcon: false,
-              segments: [
-                for (final style in OpeningStyle.values)
-                  ButtonSegment(
-                    value: style,
-                    icon: Icon(style.icon),
-                    label: Text(style.label),
-                  ),
-              ],
-              selected: {_config.opening},
-              onSelectionChanged: (selection) =>
-                  _update(_config.copyWith(opening: selection.single)),
+          if (_config.style.splits)
+            _Section(
+              title: 'Opening animation',
+              child: SegmentedButton<OpeningStyle>(
+                showSelectedIcon: false,
+                segments: [
+                  for (final style in OpeningStyle.values)
+                    ButtonSegment(
+                      value: style,
+                      icon: Icon(style.icon),
+                      label: Text(style.label),
+                    ),
+                ],
+                selected: {_config.opening},
+                onSelectionChanged: (selection) =>
+                    _update(_config.copyWith(opening: selection.single)),
+              ),
             ),
-          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -164,7 +182,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  /// One swatch per satin colour, for the bow or the seal ([noun]).
+  /// One swatch per satin colour, for the bow, seal or ribbon ([noun]).
   Widget _accentRow({
     required AccentColor selected,
     required String noun,
@@ -212,8 +230,20 @@ class _Preview extends StatelessWidget {
             child: CustomPaint(
               painter: GatefoldPainter(
                 paper: config.paper.palette,
-                wax: config.sealColor.palette,
+                wax: config.accent.palette,
               ),
+            ),
+          ),
+          CardStyle.envelope => CustomPaint(
+            painter: EnvelopePainter(
+              paper: config.paper.palette,
+              wax: config.accent.palette,
+            ),
+          ),
+          CardStyle.scroll => CustomPaint(
+            painter: ScrollPainter(
+              paper: config.paper.palette,
+              ribbon: config.accent.palette,
             ),
           ),
         },
@@ -312,6 +342,49 @@ class _SelectableTile extends StatelessWidget {
             ),
           ),
           child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _CardStyleOption extends StatelessWidget {
+  const _CardStyleOption({
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final CardStyle style;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return _SelectableTile(
+      selected: selected,
+      onTap: onTap,
+      semanticLabel: '${style.label} card style',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: [
+            Icon(
+              style.icon,
+              color: selected ? scheme.primary : scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ExcludeSemantics(
+                child: Text(
+                  style.label,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
