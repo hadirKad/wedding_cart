@@ -39,7 +39,7 @@ class ArabicPainter extends CustomPainter {
     final through = phase(t, 0.5, 0.95, Curves.easeInCubic);
 
     final unit = size.width / 400;
-    final opening = _arch(size, 0);
+    final opening = moorishArch(size, 0);
     final bounds = opening.getBounds();
 
     final focus = Offset(size.width / 2, size.height * 0.55);
@@ -100,85 +100,34 @@ class ArabicPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// A pointed (Moorish) arch with straight sides down to the threshold,
-  /// grown outward by [grow].
-  Path _arch(Size size, double grow) {
-    final cx = size.width / 2;
-    final half = size.width * 0.36 + grow;
-    final bottom = size.height * 0.93;
-    final spring = size.height * 0.38;
-    final apex = size.height * 0.13 - grow * 1.2;
-    final rise = spring - apex;
-    return Path()
-      ..moveTo(cx - half, bottom)
-      ..lineTo(cx - half, spring)
-      ..cubicTo(
-        cx - half,
-        spring - rise * 0.55,
-        cx - half * 0.35,
-        apex + rise * 0.2,
-        cx,
-        apex,
-      )
-      ..cubicTo(
-        cx + half * 0.35,
-        apex + rise * 0.2,
-        cx + half,
-        spring - rise * 0.55,
-        cx + half,
-        spring,
-      )
-      ..lineTo(cx + half, bottom)
-      ..close();
-  }
-
-  Paint _metal(Rect area) => Paint()
-    ..shader =
-        LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            ornament.light,
-            ornament.base,
-            ornament.dark,
-            ornament.base,
-            ornament.gloss,
-          ],
-          tileMode: TileMode.mirror,
-        ).createShader(
-          Rect.fromLTWH(
-            area.left,
-            area.top,
-            area.width * 0.5,
-            area.height * 0.25,
-          ),
-        );
-
   /// The gilded band around the arch, its threshold and a star keystone.
   void _paintFrame(Canvas canvas, Size size, double unit) {
     final area = Offset.zero & size;
-    final metal = _metal(area);
+    final metal = metalPaint(ornament, area);
     final band = Path()
       ..fillType = PathFillType.evenOdd
-      ..addPath(_arch(size, 22 * unit), Offset.zero)
-      ..addPath(_arch(size, 0), Offset.zero);
+      ..addPath(moorishArch(size, 22 * unit), Offset.zero)
+      ..addPath(moorishArch(size, 0), Offset.zero);
     canvas.drawShadow(band, Colors.black, 4 * unit, false);
     canvas.drawPath(band, metal);
 
     final line = Paint()
       ..style = PaintingStyle.stroke
       ..color = ornament.deep;
-    canvas.drawPath(_arch(size, 0), line..strokeWidth = 1.4 * unit);
-    canvas.drawPath(_arch(size, 11 * unit), line..strokeWidth = 0.8 * unit);
+    canvas.drawPath(moorishArch(size, 0), line..strokeWidth = 1.4 * unit);
     canvas.drawPath(
-      _arch(size, 30 * unit),
+      moorishArch(size, 11 * unit),
+      line..strokeWidth = 0.8 * unit,
+    );
+    canvas.drawPath(
+      moorishArch(size, 30 * unit),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2 * unit
         ..shader = metal.shader,
     );
 
-    final bounds = _arch(size, 0).getBounds();
+    final bounds = moorishArch(size, 0).getBounds();
     final threshold = Rect.fromLTRB(
       bounds.left - 30 * unit,
       bounds.bottom,
@@ -209,7 +158,7 @@ class ArabicPainter extends CustomPainter {
     final half = isLeft
         ? Rect.fromLTRB(b.left, b.top, b.center.dx, b.bottom)
         : Rect.fromLTRB(b.center.dx, b.top, b.right, b.bottom);
-    final metal = _metal(b);
+    final metal = metalPaint(ornament, b);
 
     canvas.save();
     canvas.translate(hingeX, 0);
@@ -240,7 +189,7 @@ class ArabicPainter extends CustomPainter {
     // a solid lower panel.
     final panelBottom = b.bottom - 120 * unit;
     canvas.save();
-    canvas.clipPath(_arch(size, -16 * unit));
+    canvas.clipPath(moorishArch(size, -16 * unit));
     canvas.clipRect(
       Rect.fromLTRB(
         half.left + (isLeft ? 0 : 10 * unit),
@@ -396,7 +345,10 @@ class ArabicPainter extends CustomPainter {
       frame..strokeWidth = 0.8 * unit,
     );
 
-    final metal = _metal(Rect.fromCircle(center: top, radius: 60 * unit));
+    final metal = metalPaint(
+      ornament,
+      Rect.fromCircle(center: top, radius: 60 * unit),
+    );
     final dome = Path()
       ..moveTo(at(-13, 15).dx, at(-13, 15).dy)
       ..quadraticBezierTo(
@@ -424,4 +376,36 @@ class ArabicPainter extends CustomPainter {
       oldDelegate.ornament != ornament ||
       oldDelegate.progress != progress ||
       oldDelegate.shimmer != shimmer;
+}
+
+/// A pointed (Moorish) arch with straight sides down to a threshold, sized
+/// for a canvas of [size] and grown outward by [grow].
+Path moorishArch(Size size, double grow) {
+  final cx = size.width / 2;
+  final half = size.width * 0.36 + grow;
+  final bottom = size.height * 0.93;
+  final spring = size.height * 0.38;
+  final apex = size.height * 0.13 - grow * 1.2;
+  final rise = spring - apex;
+  return Path()
+    ..moveTo(cx - half, bottom)
+    ..lineTo(cx - half, spring)
+    ..cubicTo(
+      cx - half,
+      spring - rise * 0.55,
+      cx - half * 0.35,
+      apex + rise * 0.2,
+      cx,
+      apex,
+    )
+    ..cubicTo(
+      cx + half * 0.35,
+      apex + rise * 0.2,
+      cx + half,
+      spring - rise * 0.55,
+      cx + half,
+      spring,
+    )
+    ..lineTo(cx + half, bottom)
+    ..close();
 }

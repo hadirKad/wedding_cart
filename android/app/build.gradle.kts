@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "com.example.wedding_cart"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // audioplayers_android and path_provider_android need NDK 27; newer NDKs
+    // are backward compatible with the rest.
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

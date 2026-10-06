@@ -15,11 +15,15 @@ class GatefoldPainter extends CustomPainter {
   const GatefoldPainter({
     required this.paper,
     required this.wax,
+    this.initials = '',
     this.crack = 0,
   });
 
   final PaperPalette paper;
   final SatinPalette wax;
+
+  /// Stamped into the wax seal; a flower when empty.
+  final String initials;
   final double crack;
 
   @override
@@ -68,7 +72,15 @@ class GatefoldPainter extends CustomPainter {
       canvas.drawPath(edge, foil..strokeWidth = 1.4 * unit);
     }
 
-    paintWaxSeal(canvas, c, 56 * unit, unit, wax, crack: crack);
+    paintWaxSeal(
+      canvas,
+      c,
+      56 * unit,
+      unit,
+      wax,
+      crack: crack,
+      initials: initials,
+    );
   }
 
   /// Adds semicircles running down the panel's inner edge to [path], which
@@ -97,5 +109,6 @@ class GatefoldPainter extends CustomPainter {
   bool shouldRepaint(GatefoldPainter oldDelegate) =>
       oldDelegate.paper != paper ||
       oldDelegate.wax != wax ||
+      oldDelegate.initials != initials ||
       oldDelegate.crack != crack;
 }

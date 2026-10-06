@@ -14,15 +14,81 @@ final _foil = AccentColor.gold.palette;
 
 /// A stroke paint in gold foil: bands of light and dark repeating across
 /// [area], like foil catching the light.
-Paint foilPaint(Size area) {
+Paint foilPaint(Size area) =>
+    metalPaint(_foil, Offset.zero & area)..style = PaintingStyle.stroke;
+
+/// A polished-metal fill in [metal]'s tones: bands of light and dark
+/// repeating across [area].
+Paint metalPaint(SatinPalette metal, Rect area) {
   return Paint()
-    ..style = PaintingStyle.stroke
-    ..shader = LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [_foil.light, _foil.base, _foil.dark, _foil.base, _foil.gloss],
-      tileMode: TileMode.mirror,
-    ).createShader(Rect.fromLTWH(0, 0, area.width * 0.5, area.height * 0.25));
+    ..shader =
+        LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            metal.light,
+            metal.base,
+            metal.dark,
+            metal.base,
+            metal.gloss,
+          ],
+          tileMode: TileMode.mirror,
+        ).createShader(
+          Rect.fromLTWH(
+            area.left,
+            area.top,
+            area.width * 0.5,
+            area.height * 0.25,
+          ),
+        );
+}
+
+/// Draws [text] centred on [centre] as if pressed up out of the surface:
+/// lit along the top left in [light], shaded bottom right in [shadow].
+///
+/// The type shrinks from [maxSize] as needed to fit within [fitWidth].
+void paintEmbossedText(
+  Canvas canvas,
+  String text,
+  Offset centre, {
+  required double fitWidth,
+  required double maxSize,
+  required Color face,
+  required Color light,
+  required Color shadow,
+  required double lift,
+}) {
+  TextPainter layout(Color color, double size) => TextPainter(
+    textAlign: TextAlign.center,
+    textDirection: TextDirection.ltr,
+    maxLines: 1,
+    text: TextSpan(
+      text: text,
+      style: TextStyle(
+        color: color,
+        fontSize: size,
+        fontWeight: FontWeight.w600,
+        fontStyle: FontStyle.italic,
+        height: 1,
+      ),
+    ),
+  )..layout();
+
+  var size = maxSize;
+  final probe = layout(face, size);
+  if (probe.width > fitWidth) size *= fitWidth / probe.width;
+
+  for (final (color, offset) in [
+    (light, Offset(-lift, -lift)),
+    (shadow, Offset(lift, lift)),
+    (face, Offset.zero),
+  ]) {
+    final painter = layout(color, size);
+    painter.paint(
+      canvas,
+      centre + offset - Offset(painter.width / 2, painter.height / 2),
+    );
+  }
 }
 
 /// The dark, softly lit surface the card rests on.
@@ -50,6 +116,8 @@ void paintPaper(
   double unit, {
   bool mirror = false,
 }) {
+  canvas.save();
+  canvas.clipRect(bounds);
   canvas.drawRect(bounds, Paint()..color = paper.paper);
 
   final step = 92 * unit;
@@ -86,6 +154,7 @@ void paintPaper(
   );
 
   paintGrain(canvas, bounds, paper, unit);
+  canvas.restore();
 }
 
 /// Fine paper grain: scattered light and dark specks.
@@ -148,9 +217,9 @@ void paintFoilFrame(Canvas canvas, Rect frame, double unit, Paint foil) {
   }
 }
 
-/// The invitation card itself: plain cardstock, a foil frame and a short
-/// greeting, laid out to fill [rect].
-void paintInvitationFace(
+/// Plain cardstock filling [rect]: a soft vignette, fine grain and a foil
+/// frame.
+void paintCardFace(
   Canvas canvas,
   Rect rect,
   PaperPalette paper,
@@ -168,6 +237,18 @@ void paintInvitationFace(
   );
   paintGrain(canvas, rect, paper, unit);
   paintFoilFrame(canvas, rect.deflate(14 * unit), unit, foil);
+}
+
+/// The invitation card itself: [paintCardFace] with a short greeting, laid
+/// out to fill [rect].
+void paintInvitationFace(
+  Canvas canvas,
+  Rect rect,
+  PaperPalette paper,
+  double unit,
+  Paint foil,
+) {
+  paintCardFace(canvas, rect, paper, unit, foil);
 
   final greeting = TextPainter(
     textAlign: TextAlign.center,
@@ -199,7 +280,8 @@ void paintInvitationFace(
   canvas.drawPath(flower, Paint()..shader = foil.shader);
 }
 
-/// A poured wax seal of radius [r] centred on [c].
+/// A poured wax seal of radius [r] centred on [c], stamped with [initials]
+/// or, when there are none, a flower.
 ///
 /// As [crack] goes from 0 to 1, a jagged split runs down through it
 /// vertically, growing outward from the centre.
@@ -210,6 +292,7 @@ void paintWaxSeal(
   double unit,
   SatinPalette wax, {
   double crack = 0,
+  String initials = '',
 }) {
   // Poured wax spreads into an uneven outline.
   final blob = Path();
@@ -264,9 +347,9 @@ void paintWaxSeal(
       ).createShader(disc),
   );
 
-  // Raised emblem: a flower inside a ring of beads.
+  // Raised emblem: initials or a flower, inside a ring of beads.
   final emblem = Path();
-  addFlower(emblem, c, 0.85 * r);
+  if (initials.isEmpty) addFlower(emblem, c, 0.85 * r);
   for (var i = 0; i < 24; i++) {
     final a = i / 24 * 2 * math.pi;
     emblem.addOval(
@@ -283,6 +366,19 @@ void paintWaxSeal(
   );
   canvas.drawPath(emblem.shift(Offset(lift, lift)), Paint()..color = wax.deep);
   canvas.drawPath(emblem, Paint()..color = wax.base);
+  if (initials.isNotEmpty) {
+    paintEmbossedText(
+      canvas,
+      initials,
+      c,
+      fitWidth: 0.95 * r,
+      maxSize: 0.5 * r,
+      face: wax.base,
+      light: wax.gloss,
+      shadow: wax.deep,
+      lift: lift,
+    );
+  }
 
   // Glossy wax catches the light along the upper-left rim.
   canvas.drawArc(

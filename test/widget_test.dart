@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:wedding_cart/main.dart';
+import 'package:wedding_cart/opening/card_audio.dart';
+import 'package:wedding_cart/opening/celebration.dart';
 import 'package:wedding_cart/opening/door_half.dart';
 
 void main() {
+  // There is no audio plugin under `flutter test`.
+  setUp(() => CardAudio.instance = const SilentCardAudio());
+
   Future<void> openCard(WidgetTester tester) async {
     await tester.tap(find.text('Start'));
     await tester.pump();
@@ -151,5 +156,33 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Silver ornament'));
     await tester.pump();
     await openCard(tester);
+  });
+
+  testWidgets('Initials reach the card and the celebration plays', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 3600);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Envelope'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'A & S');
+    await tester.tap(find.text('Music'));
+    await tester.pump();
+    await openCard(tester);
+
+    expect(find.text('A & S'), findsOneWidget);
+    expect(find.byType(Celebration), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Mute'));
+    await tester.pump();
+    expect(find.byTooltip('Unmute'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Replay'));
+    await tester.pump();
+    expect(find.byType(Celebration), findsNothing);
+    expect(find.text('TAP TO OPEN'), findsOneWidget);
   });
 }

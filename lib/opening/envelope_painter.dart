@@ -21,11 +21,15 @@ class EnvelopePainter extends CustomPainter {
   const EnvelopePainter({
     required this.paper,
     required this.wax,
+    this.initials = '',
     this.progress = 0,
   });
 
   final PaperPalette paper;
   final SatinPalette wax;
+
+  /// Stamped into the wax seal; a flower when empty.
+  final String initials;
   final double progress;
 
   /// The card inside is always ivory, whatever colour the envelope is.
@@ -86,7 +90,15 @@ class EnvelopePainter extends CustomPainter {
       canvas.translate(seal.dx, seal.dy + sealGone * 30 * unit);
       canvas.scale(1 - 0.3 * sealGone);
       canvas.translate(-seal.dx, -seal.dy);
-      paintWaxSeal(canvas, seal, 32 * unit, unit, wax, crack: crack);
+      paintWaxSeal(
+        canvas,
+        seal,
+        32 * unit,
+        unit,
+        wax,
+        crack: crack,
+        initials: initials,
+      );
       canvas.restore();
     }
     canvas.restore();
@@ -239,5 +251,6 @@ class EnvelopePainter extends CustomPainter {
   bool shouldRepaint(EnvelopePainter oldDelegate) =>
       oldDelegate.paper != paper ||
       oldDelegate.wax != wax ||
+      oldDelegate.initials != initials ||
       oldDelegate.progress != progress;
 }

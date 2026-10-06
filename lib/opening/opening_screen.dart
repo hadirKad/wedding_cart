@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:wedding_cart/card_config.dart';
 import 'package:wedding_cart/opening/arabic_painter.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
+import 'package:wedding_cart/opening/card_audio.dart';
+import 'package:wedding_cart/opening/celebration.dart';
 import 'package:wedding_cart/opening/door_half.dart';
 import 'package:wedding_cart/opening/envelope_painter.dart';
 import 'package:wedding_cart/opening/gatefold_painter.dart';
@@ -63,12 +66,60 @@ class _OpeningScreenState extends State<OpeningScreen>
   /// Once the card is fully open the cover is removed from the tree.
   bool _opened = false;
 
+  /// Silences the music and sound effects.
+  bool _muted = false;
+
+  final _audio = CardAudio.instance;
+
+  /// Sounds, each with a buzz, at points through the opening (0 to 1).
+  late final List<(double, Sfx)> _cues = _cuesFor(widget.config);
+  var _nextCue = 0;
+
   @override
   void initState() {
     super.initState();
-    _open.addStatusListener((status) {
-      if (status == AnimationStatus.completed) setState(() => _opened = true);
-    });
+    _open
+      ..addListener(_playCues)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          setState(() => _opened = true);
+        }
+      });
+    _audio.preload();
+    if (widget.config.music) _audio.startMusic();
+  }
+
+  static List<(double, Sfx)> _cuesFor(CardConfig config) {
+    final split = switch (config.opening) {
+      OpeningStyle.doors => Sfx.creak,
+      OpeningStyle.slide => Sfx.rustle,
+      OpeningStyle.zoom => Sfx.swish,
+    };
+    return switch (config.style) {
+      CardStyle.photoBow => [(0, Sfx.swish), (0.25, split), (0.9, Sfx.chime)],
+      CardStyle.gatefold => [(0, Sfx.crack), (0.25, split), (0.9, Sfx.chime)],
+      CardStyle.envelope => [
+        (0, Sfx.crack),
+        (0.18, Sfx.rustle),
+        (0.42, Sfx.rustle),
+        (0.95, Sfx.chime),
+      ],
+      CardStyle.scroll => [
+        (0, Sfx.swish),
+        (0.24, Sfx.rustle),
+        (0.95, Sfx.chime),
+      ],
+      CardStyle.arabic => [(0.1, Sfx.creak), (0.9, Sfx.chime)],
+      CardStyle.islamic => [(0.15, Sfx.swish), (0.85, Sfx.chime)],
+    };
+  }
+
+  void _playCues() {
+    while (_nextCue < _cues.length && _open.value >= _cues[_nextCue].$1) {
+      final (_, effect) = _cues[_nextCue++];
+      HapticFeedback.lightImpact();
+      if (!_muted) _audio.play(effect);
+    }
   }
 
   @override
@@ -83,19 +134,31 @@ class _OpeningScreenState extends State<OpeningScreen>
   void dispose() {
     _open.dispose();
     _breathe.dispose();
+    _audio.dispose();
     super.dispose();
   }
 
   void _handleTap() {
     if (!_open.isDismissed) return;
+    HapticFeedback.mediumImpact();
     _breathe.stop();
     _open.forward();
   }
 
   void _replay() {
     setState(() => _opened = false);
+    _nextCue = 0;
     _open.reset();
     _breathe.repeat(reverse: true);
+  }
+
+  void _toggleMute() {
+    setState(() => _muted = !_muted);
+    if (_muted) {
+      _audio.pauseMusic();
+    } else if (widget.config.music) {
+      _audio.startMusic();
+    }
   }
 
   @override
@@ -111,7 +174,7 @@ class _OpeningScreenState extends State<OpeningScreen>
             opacity: _reveal,
             child: ScaleTransition(
               scale: Tween(begin: 1.08, end: 1.0).animate(_reveal),
-              child: const WeddingCardScreen(),
+              child: WeddingCardScreen(config: widget.config),
             ),
           ),
           if (!_opened)
@@ -127,27 +190,37 @@ class _OpeningScreenState extends State<OpeningScreen>
               ),
             )
           else
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+            Celebration(config: widget.config),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_opened)
                     IconButton.filledTonal(
                       tooltip: 'Back to design',
                       icon: const Icon(Icons.arrow_back),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
-                    const Spacer(),
+                  const Spacer(),
+                  IconButton.filledTonal(
+                    tooltip: _muted ? 'Unmute' : 'Mute',
+                    icon: Icon(_muted ? Icons.volume_off : Icons.volume_up),
+                    onPressed: _toggleMute,
+                  ),
+                  if (_opened) ...[
+                    const SizedBox(width: 8),
                     IconButton.filledTonal(
                       tooltip: 'Replay',
                       icon: const Icon(Icons.replay),
                       onPressed: _replay,
                     ),
                   ],
-                ),
+                ],
               ),
             ),
+          ),
         ],
       ),
     );
@@ -205,7 +278,12 @@ class _OpeningScreenState extends State<OpeningScreen>
     final accent = config.accent.palette;
     final (painter, hintAt) = switch (config.style) {
       CardStyle.envelope => (
-        EnvelopePainter(paper: paper, wax: accent, progress: t),
+        EnvelopePainter(
+          paper: paper,
+          wax: accent,
+          initials: config.initials,
+          progress: t,
+        ),
         const Alignment(0, 0.62),
       ),
       CardStyle.scroll => (
@@ -225,6 +303,7 @@ class _OpeningScreenState extends State<OpeningScreen>
         IslamicPainter(
           paper: paper,
           ornament: accent,
+          initials: config.initials,
           progress: t,
           shimmer: breathe,
         ),
@@ -290,6 +369,7 @@ class _OpeningScreenState extends State<OpeningScreen>
           painter: GatefoldPainter(
             paper: config.paper.palette,
             wax: config.accent.palette,
+            initials: config.initials,
             crack: untie,
           ),
         ),

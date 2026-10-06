@@ -241,6 +241,8 @@ class CardConfig {
     this.paper = PaperColor.burgundy,
     this.accent = AccentColor.gold,
     this.opening = OpeningStyle.doors,
+    this.initials = '',
+    this.music = true,
   });
 
   final CardStyle style;
@@ -260,6 +262,13 @@ class CardConfig {
   /// Only used when [CardStyle.splits].
   final OpeningStyle opening;
 
+  /// The couple's initials, such as "A & S", stamped into seals and shown
+  /// as a monogram on the card. Empty for none.
+  final String initials;
+
+  /// Whether soft music plays behind the opening.
+  final bool music;
+
   CardConfig copyWith({
     CardStyle? style,
     CoverPhoto? photo,
@@ -268,6 +277,8 @@ class CardConfig {
     PaperColor? paper,
     AccentColor? accent,
     OpeningStyle? opening,
+    String? initials,
+    bool? music,
   }) {
     return CardConfig(
       style: style ?? this.style,
@@ -277,6 +288,8 @@ class CardConfig {
       paper: paper ?? this.paper,
       accent: accent ?? this.accent,
       opening: opening ?? this.opening,
+      initials: initials ?? this.initials,
+      music: music ?? this.music,
     );
   }
 }

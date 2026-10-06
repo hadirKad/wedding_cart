@@ -171,6 +171,29 @@ class _SetupScreenState extends State<SetupScreen> {
                     _update(_config.copyWith(opening: selection.single)),
               ),
             ),
+          _Section(
+            title: 'Initials',
+            child: TextField(
+              maxLength: 7,
+              textAlign: TextAlign.center,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'A & S',
+                helperText: 'Pressed into the seal and shown on the card',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (text) =>
+                  _update(_config.copyWith(initials: text.trim())),
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Music'),
+            subtitle: const Text('Soft music-box melody while it opens'),
+            secondary: const Icon(Icons.music_note_outlined),
+            value: _config.music,
+            onChanged: (on) => _update(_config.copyWith(music: on)),
+          ),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -242,6 +265,7 @@ class _Preview extends StatelessWidget {
               painter: GatefoldPainter(
                 paper: config.paper.palette,
                 wax: config.accent.palette,
+                initials: config.initials,
               ),
             ),
           ),
@@ -249,6 +273,7 @@ class _Preview extends StatelessWidget {
             painter: EnvelopePainter(
               paper: config.paper.palette,
               wax: config.accent.palette,
+              initials: config.initials,
             ),
           ),
           CardStyle.scroll => CustomPaint(
@@ -271,6 +296,7 @@ class _Preview extends StatelessWidget {
             painter: IslamicPainter(
               paper: config.paper.palette,
               ornament: config.accent.palette,
+              initials: config.initials,
             ),
           ),
         },
