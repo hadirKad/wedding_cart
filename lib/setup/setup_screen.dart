@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import 'package:wedding_cart/card_config.dart';
+import 'package:wedding_cart/opening/arabic_painter.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
 import 'package:wedding_cart/opening/envelope_painter.dart';
 import 'package:wedding_cart/opening/gatefold_painter.dart';
+import 'package:wedding_cart/opening/islamic_painter.dart';
 import 'package:wedding_cart/opening/opening_screen.dart';
 import 'package:wedding_cart/opening/scroll_painter.dart';
 
@@ -74,6 +76,8 @@ class _SetupScreenState extends State<SetupScreen> {
               title: switch (_config.style) {
                 CardStyle.envelope => 'Envelope colour',
                 CardStyle.scroll => 'Parchment colour',
+                CardStyle.arabic => 'Wall colour',
+                CardStyle.islamic => 'Background colour',
                 _ => 'Paper colour',
               },
               child: Row(
@@ -95,12 +99,11 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
             _Section(
-              title: _config.style == CardStyle.scroll
-                  ? 'Ribbon colour'
-                  : 'Seal colour',
+              title:
+                  '${_accentNoun[0].toUpperCase()}${_accentNoun.substring(1)} colour',
               child: _accentRow(
                 selected: _config.accent,
-                noun: _config.style == CardStyle.scroll ? 'ribbon' : 'seal',
+                noun: _accentNoun,
                 onSelected: (color) => _update(_config.copyWith(accent: color)),
               ),
             ),
@@ -182,7 +185,15 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  /// One swatch per satin colour, for the bow, seal or ribbon ([noun]).
+  /// What the accent colour is used for in the chosen style.
+  String get _accentNoun => switch (_config.style) {
+    CardStyle.scroll => 'ribbon',
+    CardStyle.arabic || CardStyle.islamic => 'ornament',
+    _ => 'seal',
+  };
+
+  /// One swatch per satin colour, for the bow, seal, ribbon or ornament
+  /// ([noun]).
   Widget _accentRow({
     required AccentColor selected,
     required String noun,
@@ -244,6 +255,22 @@ class _Preview extends StatelessWidget {
             painter: ScrollPainter(
               paper: config.paper.palette,
               ribbon: config.accent.palette,
+            ),
+          ),
+          // Opens onto the dark backdrop here, so the arch reads as a doorway.
+          CardStyle.arabic => ColoredBox(
+            color: const Color(0xFF1B1712),
+            child: CustomPaint(
+              painter: ArabicPainter(
+                paper: config.paper.palette,
+                ornament: config.accent.palette,
+              ),
+            ),
+          ),
+          CardStyle.islamic => CustomPaint(
+            painter: IslamicPainter(
+              paper: config.paper.palette,
+              ornament: config.accent.palette,
             ),
           ),
         },

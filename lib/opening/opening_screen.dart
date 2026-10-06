@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'package:wedding_cart/card_config.dart';
+import 'package:wedding_cart/opening/arabic_painter.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
 import 'package:wedding_cart/opening/door_half.dart';
 import 'package:wedding_cart/opening/envelope_painter.dart';
 import 'package:wedding_cart/opening/gatefold_painter.dart';
+import 'package:wedding_cart/opening/islamic_painter.dart';
 import 'package:wedding_cart/opening/scroll_painter.dart';
 import 'package:wedding_cart/wedding_card_screen.dart';
 
-/// The wedding card, closed in the chosen [CardConfig.style]: a photo tied
-/// with a bow, a gatefold or envelope held by a wax seal, or a tied scroll.
+/// The wedding card, closed in the chosen [CardConfig.style].
 ///
 /// Tapping opens it and reveals the [WeddingCardScreen]. Covers that split
-/// down the middle open in the chosen [CardConfig.opening] style; the
-/// envelope and scroll have their own opening.
+/// down the middle (photo and bow, gatefold) open in the chosen
+/// [CardConfig.opening] style; the others have their own opening.
 class OpeningScreen extends StatefulWidget {
   const OpeningScreen({super.key, required this.config});
 
@@ -45,11 +46,12 @@ class _OpeningScreenState extends State<OpeningScreen>
     curve: const Interval(0.25, 0.75, curve: Curves.easeInOutCubic),
   );
 
-  /// Fades the card in. Covers that split reveal it as they open; the
-  /// envelope and scroll bring their own card forward first.
+  /// Fades the card in: early for covers it shows through as they open,
+  /// late for the envelope and scroll, which bring their own card forward
+  /// first.
   late final Animation<double> _reveal = CurvedAnimation(
     parent: _open,
-    curve: widget.config.style.splits
+    curve: widget.config.style.revealsThrough
         ? const Interval(0.3, 0.9, curve: Curves.easeOutCubic)
         : const Interval(0.78, 1.0, curve: Curves.easeOut),
   );
@@ -195,20 +197,38 @@ class _OpeningScreenState extends State<OpeningScreen>
     );
   }
 
-  /// The envelope and scroll, which play their whole opening in one painter.
+  /// The styles that play their whole opening in one painter.
   Widget _buildStationery(double breathe) {
     final config = widget.config;
     final t = _open.value;
-    final painter = switch (config.style) {
-      CardStyle.envelope => EnvelopePainter(
-        paper: config.paper.palette,
-        wax: config.accent.palette,
-        progress: t,
+    final paper = config.paper.palette;
+    final accent = config.accent.palette;
+    final (painter, hintAt) = switch (config.style) {
+      CardStyle.envelope => (
+        EnvelopePainter(paper: paper, wax: accent, progress: t),
+        const Alignment(0, 0.62),
       ),
-      CardStyle.scroll => ScrollPainter(
-        paper: config.paper.palette,
-        ribbon: config.accent.palette,
-        progress: t,
+      CardStyle.scroll => (
+        ScrollPainter(paper: paper, ribbon: accent, progress: t),
+        const Alignment(0, 0.3),
+      ),
+      CardStyle.arabic => (
+        ArabicPainter(
+          paper: paper,
+          ornament: accent,
+          progress: t,
+          shimmer: breathe,
+        ),
+        const Alignment(0, 0.66),
+      ),
+      CardStyle.islamic => (
+        IslamicPainter(
+          paper: paper,
+          ornament: accent,
+          progress: t,
+          shimmer: breathe,
+        ),
+        const Alignment(0, 0.3),
       ),
       _ => throw StateError('${config.style} splits; use _buildOpening'),
     };
@@ -222,9 +242,7 @@ class _OpeningScreenState extends State<OpeningScreen>
           breathe,
           color: Colors.white,
           shadow: true,
-          alignment: config.style == CardStyle.envelope
-              ? const Alignment(0, 0.62)
-              : const Alignment(0, 0.3),
+          alignment: hintAt,
         ),
       ],
     );

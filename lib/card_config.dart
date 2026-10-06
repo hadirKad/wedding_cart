@@ -12,7 +12,13 @@ enum CardStyle {
   envelope('Envelope', Icons.mail_outline),
 
   /// A parchment scroll tied with a ribbon; it unrolls from the middle.
-  scroll('Scroll', Icons.history_edu_outlined);
+  scroll('Scroll', Icons.history_edu_outlined),
+
+  /// Carved palace doors in a Moorish arch, between hanging lanterns.
+  arabic('Arabic', Icons.light_outlined),
+
+  /// Geometric star pattern with calligraphy; a star window opens.
+  islamic('Islamic', Icons.mosque_outlined);
 
   const CardStyle(this.label, this.icon);
 
@@ -22,6 +28,10 @@ enum CardStyle {
   /// Whether the cover splits down the middle, so it can open with any
   /// [OpeningStyle]. The other styles have their own opening.
   bool get splits => this == photoBow || this == gatefold;
+
+  /// Whether the card shows through as the cover opens. The envelope and
+  /// scroll instead bring their own card forward before it appears.
+  bool get revealsThrough => this != envelope && this != scroll;
 }
 
 /// The photos the card can open from.
@@ -164,6 +174,24 @@ enum PaperColor {
       embossShadow: Color(0x335A3A10),
       ink: Color(0xFF7A5A26),
     ),
+  ),
+  emerald(
+    'Emerald',
+    PaperPalette(
+      paper: Color(0xFF0E4D3A),
+      embossLight: Color(0x26FFFFFF),
+      embossShadow: Color(0x73000000),
+      ink: Color(0xFFF3DFA8),
+    ),
+  ),
+  midnight(
+    'Midnight',
+    PaperPalette(
+      paper: Color(0xFF14213D),
+      embossLight: Color(0x22FFFFFF),
+      embossShadow: Color(0x80000000),
+      ink: Color(0xFFF3DFA8),
+    ),
   );
 
   const PaperColor(this.label, this.palette);
@@ -222,10 +250,11 @@ class CardConfig {
   final AccentColor bowColor;
   final BowStyle bowStyle;
 
-  // Used by the stationery styles: gatefold, envelope and scroll.
+  // Used by every style except [CardStyle.photoBow].
   final PaperColor paper;
 
-  /// The wax seal on a gatefold or envelope; the ribbon on a scroll.
+  /// The wax seal on a gatefold or envelope, the ribbon on a scroll, or the
+  /// gilded ornament on the Arabic and Islamic styles.
   final AccentColor accent;
 
   /// Only used when [CardStyle.splits].

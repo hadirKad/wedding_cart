@@ -125,4 +125,31 @@ void main() {
     await tester.pump();
     await openCard(tester);
   });
+
+  testWidgets('Arabic and Islamic styles open', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1080, 3400);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Arabic'));
+    await tester.pump();
+    expect(find.text('Wall colour'), findsOneWidget);
+    expect(find.text('Ornament colour'), findsOneWidget);
+    expect(find.text('Opening animation'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Emerald paper'));
+    await tester.pump();
+    await openCard(tester);
+
+    await tester.tap(find.byTooltip('Back to design'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Islamic'));
+    await tester.pump();
+    await tester.tap(find.bySemanticsLabel('Midnight paper'));
+    await tester.tap(find.bySemanticsLabel('Silver ornament'));
+    await tester.pump();
+    await openCard(tester);
+  });
 }

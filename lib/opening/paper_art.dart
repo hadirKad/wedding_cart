@@ -372,6 +372,24 @@ void addFlower(Path path, Offset p, double size, {bool leaves = false}) {
   }
 }
 
+/// An eight-point star of outer radius [r] centred on [c]: the outline of
+/// two overlapping squares, as in Islamic geometric patterns.
+Path starPath(Offset c, double r, {double rotation = 0}) {
+  // Where the edges of the two squares cross: cos 45° / cos 22.5°.
+  const inner = 0.765;
+  final path = Path();
+  for (var i = 0; i < 16; i++) {
+    final a = rotation - math.pi / 2 + i * math.pi / 8;
+    final p = c + Offset(math.cos(a), math.sin(a)) * (i.isEven ? r : r * inner);
+    if (i == 0) {
+      path.moveTo(p.dx, p.dy);
+    } else {
+      path.lineTo(p.dx, p.dy);
+    }
+  }
+  return path..close();
+}
+
 /// Draws [path] as if pressed up out of the paper.
 void _emboss(Canvas canvas, Path path, PaperPalette paper, double unit) {
   final lift = 1.2 * unit;
