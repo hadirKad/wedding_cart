@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:wedding_cart/opening/opening_screen.dart';
+import 'package:wedding_cart/setup/setup_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFB8893B)),
       ),
-      home: const OpeningScreen(),
+      home: const SetupScreen(),
     );
   }
 }

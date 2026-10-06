@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 
-const _satinDeep = Color(0xFF6E4E1E);
-const _satinDark = Color(0xFF9C7430);
-const _satin = Color(0xFFD4A955);
-const _satinLight = Color(0xFFF3DFA8);
-const _satinGloss = Color(0xFFFFF6DC);
+import 'package:wedding_cart/card_config.dart';
 
 /// Two satin bands crossing at the centre of the screen.
 ///
 /// As [progress] goes from 0 to 1, each band pulls back toward the screen edges.
 class RibbonPainter extends CustomPainter {
-  const RibbonPainter({required this.progress});
+  const RibbonPainter({
+    required this.progress,
+    required this.palette,
+    this.halfBand = 13,
+  });
 
   final double progress;
+  final SatinPalette palette;
 
-  static const _halfBand = 13.0;
+  /// Half the thickness of each band, in logical pixels.
+  final double halfBand;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -22,14 +24,14 @@ class RibbonPainter extends CustomPainter {
     final keep = 1 - progress;
 
     final horizontal = [
-      Rect.fromLTRB(0, c.dy - _halfBand, c.dx * keep, c.dy + _halfBand),
-      Rect.fromLTRB(size.width - (size.width - c.dx) * keep, c.dy - _halfBand,
-          size.width, c.dy + _halfBand),
+      Rect.fromLTRB(0, c.dy - halfBand, c.dx * keep, c.dy + halfBand),
+      Rect.fromLTRB(size.width - (size.width - c.dx) * keep, c.dy - halfBand,
+          size.width, c.dy + halfBand),
     ];
     final vertical = [
-      Rect.fromLTRB(c.dx - _halfBand, 0, c.dx + _halfBand, c.dy * keep),
-      Rect.fromLTRB(c.dx - _halfBand,
-          size.height - (size.height - c.dy) * keep, c.dx + _halfBand,
+      Rect.fromLTRB(c.dx - halfBand, 0, c.dx + halfBand, c.dy * keep),
+      Rect.fromLTRB(c.dx - halfBand,
+          size.height - (size.height - c.dy) * keep, c.dx + halfBand,
           size.height),
     ];
 
@@ -51,31 +53,33 @@ class RibbonPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: horizontal ? Alignment.topCenter : Alignment.centerLeft,
         end: horizontal ? Alignment.bottomCenter : Alignment.centerRight,
-        colors: const [
-          _satinDeep,
-          _satin,
-          _satinLight,
-          _satinGloss,
-          _satinLight,
-          _satin,
-          _satinDark,
-          _satinDeep,
+        colors: [
+          palette.deep,
+          palette.base,
+          palette.light,
+          palette.gloss,
+          palette.light,
+          palette.base,
+          palette.dark,
+          palette.deep,
         ],
         stops: const [0, 0.12, 0.3, 0.38, 0.48, 0.7, 0.9, 1],
       ).createShader(rect);
 
     canvas.drawRect(
-      rect.shift(const Offset(0, 2)),
+      rect.shift(Offset(0, halfBand * 0.15)),
       Paint()
         ..color = Colors.black26
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, halfBand * 0.23),
     );
     canvas.drawRect(rect, satin);
   }
 
   @override
   bool shouldRepaint(RibbonPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress ||
+      oldDelegate.palette != palette ||
+      oldDelegate.halfBand != halfBand;
 }
 
 /// A satin bow centred in its canvas.
@@ -84,9 +88,16 @@ class RibbonPainter extends CustomPainter {
 /// centre and the tails drop away, all fading out. [sheen] (0 to 1) shifts
 /// the highlights slightly so the fabric seems to catch moving light.
 class BowPainter extends CustomPainter {
-  const BowPainter({required this.progress, this.sheen = 0.5});
+  const BowPainter({
+    required this.progress,
+    required this.palette,
+    this.style = BowStyle.classic,
+    this.sheen = 0.5,
+  });
 
   final double progress;
+  final SatinPalette palette;
+  final BowStyle style;
   final double sheen;
 
   @override
@@ -102,10 +113,11 @@ class BowPainter extends CustomPainter {
         null, Paint()..color = Colors.black.withValues(alpha: fade));
 
     // Tails sit behind the loops and fall as the bow unties.
+    final tailLength = style == BowStyle.cascade ? 1.7 : 1.0;
     canvas.save();
     canvas.translate(0, progress * r * 1.6);
     for (final side in const [-1.0, 1.0]) {
-      _paintTail(canvas, c, r, side);
+      _paintTail(canvas, c, r, side, tailLength);
     }
     canvas.restore();
 
@@ -114,8 +126,18 @@ class BowPainter extends CustomPainter {
     canvas.translate(c.dx, c.dy);
     canvas.scale(1 - progress);
     canvas.translate(-c.dx, -c.dy);
-    for (final side in const [-1.0, 1.0]) {
-      _paintLoop(canvas, c, r, side);
+    if (style == BowStyle.layered) {
+      // A larger pair raised behind, a smaller pair drooping in front.
+      for (final side in const [-1.0, 1.0]) {
+        _paintLoop(canvas, c, r, side, tilt: -0.32, scale: 1.05);
+      }
+      for (final side in const [-1.0, 1.0]) {
+        _paintLoop(canvas, c, r, side, tilt: 0.12, scale: 0.78);
+      }
+    } else {
+      for (final side in const [-1.0, 1.0]) {
+        _paintLoop(canvas, c, r, side);
+      }
     }
     _paintKnot(canvas, c, r);
     canvas.restore();
@@ -123,9 +145,18 @@ class BowPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintLoop(Canvas canvas, Offset c, double r, double side) {
+  /// [tilt] rotates the loop about the knot: negative lifts it, positive
+  /// lets it droop.
+  void _paintLoop(Canvas canvas, Offset c, double r, double side,
+      {double tilt = 0, double scale = 1}) {
     Offset at(double x, double y) => Offset(c.dx + side * x * r, c.dy + y * r);
     final shift = (sheen - 0.5) * 0.06;
+
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(side * tilt);
+    canvas.scale(scale);
+    canvas.translate(-c.dx, -c.dy);
 
     final loop = Path()
       ..moveToPoint(at(0, 0))
@@ -145,7 +176,7 @@ class BowPainter extends CustomPainter {
         ..shader = RadialGradient(
           center: Alignment(side * 0.25, -0.45),
           radius: 0.95,
-          colors: const [_satinLight, _satin, _satinDark, _satinDeep],
+          colors: [palette.light, palette.base, palette.dark, palette.deep],
           stops: const [0, 0.4, 0.75, 1],
         ).createShader(bounds),
     );
@@ -159,10 +190,10 @@ class BowPainter extends CustomPainter {
     canvas.drawPath(
       opening,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [_satinDeep, _satinDark],
+          colors: [palette.deep, palette.dark],
         ).createShader(opening.getBounds()),
     );
     // Where the fabric rolls over at the bottom of the opening.
@@ -204,16 +235,22 @@ class BowPainter extends CustomPainter {
       pinch,
       Paint()
         ..shader = RadialGradient(
-          colors: [_satinDeep.withValues(alpha: 0.7), _satinDeep.withValues(alpha: 0)],
+          colors: [
+            palette.deep.withValues(alpha: 0.7),
+            palette.deep.withValues(alpha: 0),
+          ],
         ).createShader(pinch),
     );
 
     canvas.restore();
     canvas.drawPath(loop, _edge);
+    canvas.restore();
   }
 
-  void _paintTail(Canvas canvas, Offset c, double r, double side) {
-    Offset at(double x, double y) => Offset(c.dx + side * x * r, c.dy + y * r);
+  void _paintTail(
+      Canvas canvas, Offset c, double r, double side, double length) {
+    Offset at(double x, double y) =>
+        Offset(c.dx + side * x * r, c.dy + y * length * r);
 
     final tail = Path()
       ..moveToPoint(at(0.06, 0))
@@ -233,19 +270,19 @@ class BowPainter extends CustomPainter {
     canvas.drawRect(
       bounds,
       Paint()
-        ..shader = const LinearGradient(
+        ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            _satinDeep,
-            _satin,
-            _satinLight,
-            _satin,
-            _satinDark,
-            _satin,
-            _satinLight,
+            palette.deep,
+            palette.base,
+            palette.light,
+            palette.base,
+            palette.dark,
+            palette.base,
+            palette.light,
           ],
-          stops: [0, 0.15, 0.32, 0.5, 0.64, 0.82, 1],
+          stops: const [0, 0.15, 0.32, 0.5, 0.64, 0.82, 1],
         ).createShader(bounds),
     );
     _gloss(
@@ -278,12 +315,12 @@ class BowPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: const [
-            _satinDeep,
-            _satin,
-            _satinLight,
-            _satin,
-            _satinDark,
+          colors: [
+            palette.deep,
+            palette.base,
+            palette.light,
+            palette.base,
+            palette.dark,
           ],
           stops: [0, glossAt - 0.2, glossAt, glossAt + 0.3, 1],
         ).createShader(rect),
@@ -294,7 +331,8 @@ class BowPainter extends CustomPainter {
         canvas,
         Path()
           ..moveTo(c.dx + x * r, rect.top)
-          ..quadraticBezierTo(c.dx + x * 1.6 * r, c.dy, c.dx + x * r, rect.bottom),
+          ..quadraticBezierTo(
+              c.dx + x * 1.6 * r, c.dy, c.dx + x * r, rect.bottom),
         r,
       );
     }
@@ -312,7 +350,7 @@ class BowPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeWidth = width * r
-        ..color = _satinGloss.withValues(alpha: 0.55 * strength)
+        ..color = palette.gloss.withValues(alpha: 0.55 * strength)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, width * 0.4 * r),
     );
     canvas.drawPath(
@@ -334,19 +372,22 @@ class BowPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeWidth = 0.04 * r
-        ..color = _satinDeep.withValues(alpha: 0.45)
+        ..color = palette.deep.withValues(alpha: 0.45)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, 0.025 * r),
     );
   }
 
-  static final _edge = Paint()
+  Paint get _edge => Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.8
-    ..color = _satinDeep.withValues(alpha: 0.5);
+    ..color = palette.deep.withValues(alpha: 0.5);
 
   @override
   bool shouldRepaint(BowPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.sheen != sheen;
+      oldDelegate.progress != progress ||
+      oldDelegate.sheen != sheen ||
+      oldDelegate.palette != palette ||
+      oldDelegate.style != style;
 }
 
 extension on Path {

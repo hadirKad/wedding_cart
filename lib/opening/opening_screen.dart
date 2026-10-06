@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
 
+import 'package:wedding_cart/card_config.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
 import 'package:wedding_cart/opening/door_half.dart';
 import 'package:wedding_cart/wedding_card_screen.dart';
 
-/// Decoded at a fixed width so the 3465px source photo doesn't make the
-/// doors stutter.
-const _cover = ResizeImage(
-  AssetImage('assets/images/place01.jpg'),
-  width: 1440,
-);
-
 /// The wedding card, closed behind a photo tied with a bow.
 ///
-/// Tapping unties the bow, swings the photo open like double doors and
-/// reveals the [WeddingCardScreen] behind it.
+/// Tapping unties the bow, opens the photo in the chosen [CardConfig.opening]
+/// style and reveals the [WeddingCardScreen] behind it.
 class OpeningScreen extends StatefulWidget {
-  const OpeningScreen({super.key});
+  const OpeningScreen({super.key, required this.config});
+
+  final CardConfig config;
 
   @override
   State<OpeningScreen> createState() => _OpeningScreenState();
@@ -48,7 +44,11 @@ class _OpeningScreenState extends State<OpeningScreen>
     curve: const Interval(0.3, 0.9, curve: Curves.easeOutCubic),
   );
 
-  /// Once the doors are fully open the cover is removed from the tree.
+  /// Decoded at a fixed width so the large source photos don't make the
+  /// opening stutter.
+  late final ImageProvider _cover = widget.config.photo.image(width: 1440);
+
+  /// Once the photo is fully open the cover is removed from the tree.
   bool _opened = false;
 
   @override
@@ -78,6 +78,12 @@ class _OpeningScreenState extends State<OpeningScreen>
     _open.forward();
   }
 
+  void _replay() {
+    setState(() => _opened = false);
+    _open.reset();
+    _breathe.repeat(reverse: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -105,6 +111,28 @@ class _OpeningScreenState extends State<OpeningScreen>
                   builder: (context, _) => _buildCover(size),
                 ),
               ),
+            )
+          else
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    IconButton.filledTonal(
+                      tooltip: 'Back to design',
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                    const Spacer(),
+                    IconButton.filledTonal(
+                      tooltip: 'Replay',
+                      icon: const Icon(Icons.replay),
+                      onPressed: _replay,
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),
@@ -112,32 +140,28 @@ class _OpeningScreenState extends State<OpeningScreen>
   }
 
   Widget _buildCover(Size size) {
+    final config = widget.config;
     final untie = _untie.value;
     final breathe = Curves.easeInOut.transform(_breathe.value);
+    final palette = config.bowColor.palette;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        DoorHalf(
-          image: _cover,
-          screenSize: size,
-          isLeft: true,
-          progress: _doors.value,
-        ),
-        DoorHalf(
-          image: _cover,
-          screenSize: size,
-          isLeft: false,
-          progress: _doors.value,
-        ),
+        ..._buildPhoto(size),
         if (untie < 1) ...[
-          CustomPaint(painter: RibbonPainter(progress: untie)),
+          CustomPaint(painter: RibbonPainter(progress: untie, palette: palette)),
           Center(
             child: Transform.scale(
               scale: 1 + 0.04 * breathe,
               child: CustomPaint(
                 size: const Size.square(170),
-                painter: BowPainter(progress: untie, sheen: breathe),
+                painter: BowPainter(
+                  progress: untie,
+                  palette: palette,
+                  style: config.bowStyle,
+                  sheen: breathe,
+                ),
               ),
             ),
           ),
@@ -160,5 +184,33 @@ class _OpeningScreenState extends State<OpeningScreen>
         ],
       ],
     );
+  }
+
+  List<Widget> _buildPhoto(Size size) {
+    final style = widget.config.opening;
+    final progress = _doors.value;
+
+    if (style == OpeningStyle.zoom) {
+      return [
+        Opacity(
+          opacity: 1 - progress,
+          child: Transform.scale(
+            scale: 1 + 0.6 * progress,
+            child: Image(image: _cover, fit: BoxFit.cover, gaplessPlayback: true),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      for (final isLeft in const [true, false])
+        DoorHalf(
+          image: _cover,
+          screenSize: size,
+          isLeft: isLeft,
+          progress: progress,
+          style: style,
+        ),
+    ];
   }
 }
