@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:wedding_cart/card_config.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
 import 'package:wedding_cart/opening/door_half.dart';
+import 'package:wedding_cart/opening/gatefold_painter.dart';
 import 'package:wedding_cart/wedding_card_screen.dart';
 
-/// The wedding card, closed behind a photo tied with a bow.
+/// The wedding card, closed in the chosen [CardConfig.style]: a photo tied
+/// with a bow, or a gatefold held by a wax seal.
 ///
-/// Tapping unties the bow, opens the photo in the chosen [CardConfig.opening]
-/// style and reveals the [WeddingCardScreen] behind it.
+/// Tapping unties the bow or cracks the seal, opens the cover in the chosen
+/// [CardConfig.opening] style and reveals the [WeddingCardScreen] behind it.
 class OpeningScreen extends StatefulWidget {
   const OpeningScreen({super.key, required this.config});
 
@@ -46,9 +48,9 @@ class _OpeningScreenState extends State<OpeningScreen>
 
   /// Decoded at a fixed width so the large source photos don't make the
   /// opening stutter.
-  late final ImageProvider _cover = widget.config.photo.image(width: 1440);
+  late final ImageProvider _photo = widget.config.photo.image(width: 1440);
 
-  /// Once the photo is fully open the cover is removed from the tree.
+  /// Once the card is fully open the cover is removed from the tree.
   bool _opened = false;
 
   @override
@@ -62,7 +64,9 @@ class _OpeningScreenState extends State<OpeningScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    precacheImage(_cover, context);
+    if (widget.config.style == CardStyle.photoBow) {
+      precacheImage(_photo, context);
+    }
   }
 
   @override
@@ -144,13 +148,23 @@ class _OpeningScreenState extends State<OpeningScreen>
     final untie = _untie.value;
     final breathe = Curves.easeInOut.transform(_breathe.value);
     final palette = config.bowColor.palette;
+    final gatefold = config.style == CardStyle.gatefold;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        ..._buildPhoto(size),
-        if (untie < 1) ...[
-          CustomPaint(painter: RibbonPainter(progress: untie, palette: palette)),
+        ..._buildOpening(size, _buildFace(untie)),
+        if (gatefold && untie < 1)
+          _buildHint(
+            untie,
+            breathe,
+            color: config.paper.palette.ink,
+            shadow: false,
+          ),
+        if (!gatefold && untie < 1) ...[
+          CustomPaint(
+            painter: RibbonPainter(progress: untie, palette: palette),
+          ),
           Center(
             child: Transform.scale(
               scale: 1 + 0.04 * breathe,
@@ -165,28 +179,61 @@ class _OpeningScreenState extends State<OpeningScreen>
               ),
             ),
           ),
-          Align(
-            alignment: const Alignment(0, 0.4),
-            child: Opacity(
-              opacity: (1 - untie * 3).clamp(0.0, 1.0) * (0.6 + 0.4 * breathe),
-              child: const Text(
-                'TAP TO OPEN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  letterSpacing: 4,
-                  fontWeight: FontWeight.w500,
-                  shadows: [Shadow(blurRadius: 8, color: Colors.black54)],
-                ),
-              ),
-            ),
-          ),
+          _buildHint(untie, breathe, color: Colors.white, shadow: true),
         ],
       ],
     );
   }
 
-  List<Widget> _buildPhoto(Size size) {
+  Widget _buildHint(
+    double untie,
+    double breathe, {
+    required Color color,
+    required bool shadow,
+  }) {
+    return Align(
+      alignment: const Alignment(0, 0.4),
+      child: Opacity(
+        opacity: (1 - untie * 3).clamp(0.0, 1.0) * (0.6 + 0.4 * breathe),
+        child: Text(
+          'TAP TO OPEN',
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            letterSpacing: 4,
+            fontWeight: FontWeight.w500,
+            shadows: shadow
+                ? const [Shadow(blurRadius: 8, color: Colors.black54)]
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The full-screen front of the closed card, before it is split open.
+  Widget _buildFace(double untie) {
+    final config = widget.config;
+    return switch (config.style) {
+      CardStyle.photoBow => Image(
+        image: _photo,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      ),
+      // Kept in its own layer so the doors can move it without repainting.
+      CardStyle.gatefold => RepaintBoundary(
+        child: CustomPaint(
+          painter: GatefoldPainter(
+            paper: config.paper.palette,
+            wax: config.sealColor.palette,
+            crack: untie,
+          ),
+        ),
+      ),
+    };
+  }
+
+  List<Widget> _buildOpening(Size size, Widget face) {
     final style = widget.config.opening;
     final progress = _doors.value;
 
@@ -194,10 +241,7 @@ class _OpeningScreenState extends State<OpeningScreen>
       return [
         Opacity(
           opacity: 1 - progress,
-          child: Transform.scale(
-            scale: 1 + 0.6 * progress,
-            child: Image(image: _cover, fit: BoxFit.cover, gaplessPlayback: true),
-          ),
+          child: Transform.scale(scale: 1 + 0.6 * progress, child: face),
         ),
       ];
     }
@@ -205,7 +249,7 @@ class _OpeningScreenState extends State<OpeningScreen>
     return [
       for (final isLeft in const [true, false])
         DoorHalf(
-          image: _cover,
+          cover: face,
           screenSize: size,
           isLeft: isLeft,
           progress: progress,

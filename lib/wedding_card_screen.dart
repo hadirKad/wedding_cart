@@ -29,10 +29,7 @@ class WeddingCardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 28),
                   const Text('Bride Name', style: _nameStyle),
-                  const Text(
-                    '&',
-                    style: TextStyle(color: _gold, fontSize: 30),
-                  ),
+                  const Text('&', style: TextStyle(color: _gold, fontSize: 30)),
                   const Text('Groom Name', style: _nameStyle),
                   const SizedBox(height: 24),
                   const Text(

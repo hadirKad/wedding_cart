@@ -4,21 +4,22 @@ import 'package:flutter/material.dart';
 
 import 'package:wedding_cart/card_config.dart';
 
-/// One half of the cover photo, opening away from the centre.
+/// One half of the closed card's cover, opening away from the centre.
 ///
 /// With [OpeningStyle.doors] it swings on its outer edge like a door; with
 /// [OpeningStyle.slide] it slides straight off its side of the screen.
 class DoorHalf extends StatelessWidget {
   const DoorHalf({
     super.key,
-    required this.image,
+    required this.cover,
     required this.screenSize,
     required this.isLeft,
     required this.progress,
     this.style = OpeningStyle.doors,
   }) : assert(style != OpeningStyle.zoom);
 
-  final ImageProvider image;
+  /// The whole, full-screen cover; only this door's half of it is shown.
+  final Widget cover;
   final Size screenSize;
   final bool isLeft;
 
@@ -35,10 +36,13 @@ class DoorHalf extends StatelessWidget {
     final transform = swings
         // Opposite signs swing both doors away from the viewer, into the scene.
         ? (Matrix4.identity()
-          ..setEntry(3, 2, 0.0012)
-          ..rotateY(outward * progress * math.pi / 2))
+            ..setEntry(3, 2, 0.0012)
+            ..rotateY(outward * progress * math.pi / 2))
         : Matrix4.translationValues(
-            outward * progress * screenSize.width / 2, 0, 0);
+            outward * progress * screenSize.width / 2,
+            0,
+            0,
+          );
 
     return Align(
       alignment: hinge,
@@ -46,7 +50,7 @@ class DoorHalf extends StatelessWidget {
         alignment: hinge,
         transform: transform,
         child: ClipRect(
-          // Lay out the full-screen photo, then keep only this door's half,
+          // Lay out the full-screen cover, then keep only this door's half,
           // so the two halves line up exactly when closed.
           child: Align(
             alignment: hinge,
@@ -56,7 +60,7 @@ class DoorHalf extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image(image: image, fit: BoxFit.cover, gaplessPlayback: true),
+                  cover,
                   // Darkens as the door turns away from the light.
                   if (swings)
                     ColoredBox(

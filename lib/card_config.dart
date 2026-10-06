@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 
+/// What the closed card looks like.
+enum CardStyle {
+  /// A photo tied with a satin ribbon and bow.
+  photoBow('Photo & bow', Icons.photo_outlined),
+
+  /// Two embossed cardstock panels closed with a wax seal.
+  gatefold('Gatefold', Icons.local_florist_outlined);
+
+  const CardStyle(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
 /// The photos the card can open from.
 enum CoverPhoto {
   place01('assets/images/place01.jpg'),
@@ -33,7 +47,8 @@ class SatinPalette {
   final Color gloss;
 }
 
-enum BowColor {
+/// Satin and wax colours, shared by the bow and the wax seal.
+enum AccentColor {
   gold(
     'Gold',
     SatinPalette(
@@ -85,10 +100,66 @@ enum BowColor {
     ),
   );
 
-  const BowColor(this.label, this.palette);
+  const AccentColor(this.label, this.palette);
 
   final String label;
   final SatinPalette palette;
+}
+
+/// Colours for a gatefold card's cardstock.
+class PaperPalette {
+  const PaperPalette({
+    required this.paper,
+    required this.embossLight,
+    required this.embossShadow,
+    required this.ink,
+  });
+
+  final Color paper;
+
+  /// The lit upper-left edge of raised (embossed) shapes.
+  final Color embossLight;
+
+  /// The shaded lower-right edge of raised shapes.
+  final Color embossShadow;
+
+  /// Text drawn on the paper, chosen to stay readable on it.
+  final Color ink;
+}
+
+enum PaperColor {
+  burgundy(
+    'Burgundy',
+    PaperPalette(
+      paper: Color(0xFF6E1726),
+      embossLight: Color(0x2EFFFFFF),
+      embossShadow: Color(0x73000000),
+      ink: Color(0xFFF3DFA8),
+    ),
+  ),
+  ivory(
+    'Ivory',
+    PaperPalette(
+      paper: Color(0xFFF7F1E5),
+      embossLight: Color(0xE6FFFFFF),
+      embossShadow: Color(0x24402A10),
+      ink: Color(0xFF9C7430),
+    ),
+  ),
+  champagne(
+    'Champagne',
+    PaperPalette(
+      paper: Color(0xFFE9D8BC),
+      embossLight: Color(0xA6FFFFFF),
+      embossShadow: Color(0x335A3A10),
+      ink: Color(0xFF7A5A26),
+    ),
+  );
+
+  const PaperColor(this.label, this.palette);
+
+  final String label;
+  final PaperPalette palette;
 }
 
 enum BowStyle {
@@ -107,13 +178,13 @@ enum BowStyle {
 }
 
 enum OpeningStyle {
-  /// The photo splits and swings open like double doors.
+  /// The cover splits and swings open like double doors.
   doors('Doors', Icons.door_front_door_outlined),
 
-  /// The photo splits and both halves slide off the sides.
+  /// The cover splits and both halves slide off the sides.
   slide('Slide', Icons.swap_horiz),
 
-  /// The photo grows and fades, as if walking through it.
+  /// The cover grows and fades, as if walking through it.
   zoom('Zoom', Icons.zoom_out_map);
 
   const OpeningStyle(this.label, this.icon);
@@ -125,27 +196,44 @@ enum OpeningStyle {
 /// Everything the user chose on the setup screen.
 class CardConfig {
   const CardConfig({
+    this.style = CardStyle.photoBow,
     this.photo = CoverPhoto.place01,
-    this.bowColor = BowColor.gold,
+    this.bowColor = AccentColor.gold,
     this.bowStyle = BowStyle.classic,
+    this.paper = PaperColor.burgundy,
+    this.sealColor = AccentColor.gold,
     this.opening = OpeningStyle.doors,
   });
 
+  final CardStyle style;
+
+  // Used by [CardStyle.photoBow].
   final CoverPhoto photo;
-  final BowColor bowColor;
+  final AccentColor bowColor;
   final BowStyle bowStyle;
+
+  // Used by [CardStyle.gatefold].
+  final PaperColor paper;
+  final AccentColor sealColor;
+
   final OpeningStyle opening;
 
   CardConfig copyWith({
+    CardStyle? style,
     CoverPhoto? photo,
-    BowColor? bowColor,
+    AccentColor? bowColor,
     BowStyle? bowStyle,
+    PaperColor? paper,
+    AccentColor? sealColor,
     OpeningStyle? opening,
   }) {
     return CardConfig(
+      style: style ?? this.style,
       photo: photo ?? this.photo,
       bowColor: bowColor ?? this.bowColor,
       bowStyle: bowStyle ?? this.bowStyle,
+      paper: paper ?? this.paper,
+      sealColor: sealColor ?? this.sealColor,
       opening: opening ?? this.opening,
     );
   }

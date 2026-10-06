@@ -25,14 +25,21 @@ class RibbonPainter extends CustomPainter {
 
     final horizontal = [
       Rect.fromLTRB(0, c.dy - halfBand, c.dx * keep, c.dy + halfBand),
-      Rect.fromLTRB(size.width - (size.width - c.dx) * keep, c.dy - halfBand,
-          size.width, c.dy + halfBand),
+      Rect.fromLTRB(
+        size.width - (size.width - c.dx) * keep,
+        c.dy - halfBand,
+        size.width,
+        c.dy + halfBand,
+      ),
     ];
     final vertical = [
       Rect.fromLTRB(c.dx - halfBand, 0, c.dx + halfBand, c.dy * keep),
-      Rect.fromLTRB(c.dx - halfBand,
-          size.height - (size.height - c.dy) * keep, c.dx + halfBand,
-          size.height),
+      Rect.fromLTRB(
+        c.dx - halfBand,
+        size.height - (size.height - c.dy) * keep,
+        c.dx + halfBand,
+        size.height,
+      ),
     ];
 
     for (final rect in horizontal) {
@@ -110,7 +117,9 @@ class BowPainter extends CustomPainter {
 
     // Draw everything opaque into one layer, then fade the whole bow at once.
     canvas.saveLayer(
-        null, Paint()..color = Colors.black.withValues(alpha: fade));
+      null,
+      Paint()..color = Colors.black.withValues(alpha: fade),
+    );
 
     // Tails sit behind the loops and fall as the bow unties.
     final tailLength = style == BowStyle.cascade ? 1.7 : 1.0;
@@ -147,8 +156,14 @@ class BowPainter extends CustomPainter {
 
   /// [tilt] rotates the loop about the knot: negative lifts it, positive
   /// lets it droop.
-  void _paintLoop(Canvas canvas, Offset c, double r, double side,
-      {double tilt = 0, double scale = 1}) {
+  void _paintLoop(
+    Canvas canvas,
+    Offset c,
+    double r,
+    double side, {
+    double tilt = 0,
+    double scale = 1,
+  }) {
     Offset at(double x, double y) => Offset(c.dx + side * x * r, c.dy + y * r);
     final shift = (sheen - 0.5) * 0.06;
 
@@ -248,7 +263,12 @@ class BowPainter extends CustomPainter {
   }
 
   void _paintTail(
-      Canvas canvas, Offset c, double r, double side, double length) {
+    Canvas canvas,
+    Offset c,
+    double r,
+    double side,
+    double length,
+  ) {
     Offset at(double x, double y) =>
         Offset(c.dx + side * x * r, c.dy + y * length * r);
 
@@ -332,7 +352,11 @@ class BowPainter extends CustomPainter {
         Path()
           ..moveTo(c.dx + x * r, rect.top)
           ..quadraticBezierTo(
-              c.dx + x * 1.6 * r, c.dy, c.dx + x * r, rect.bottom),
+            c.dx + x * 1.6 * r,
+            c.dy,
+            c.dx + x * r,
+            rect.bottom,
+          ),
         r,
       );
     }

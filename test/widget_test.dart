@@ -19,8 +19,9 @@ void main() {
     expect(find.text('Bride Name'), findsOneWidget);
   }
 
-  testWidgets('Start plays the default doors opening',
-      (WidgetTester tester) async {
+  testWidgets('Start plays the default doors opening', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp());
     expect(find.text('Design your card'), findsOneWidget);
 
@@ -42,8 +43,9 @@ void main() {
     expect(find.text('Design your card'), findsOneWidget);
   });
 
-  testWidgets('Every choice can be picked and opened',
-      (WidgetTester tester) async {
+  testWidgets('Every choice can be picked and opened', (
+    WidgetTester tester,
+  ) async {
     // Tall enough that every option is on screen, not behind the Start bar.
     tester.view.physicalSize = const Size(1080, 3200);
     tester.view.devicePixelRatio = 2.5;
@@ -63,6 +65,34 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Double bow style'));
     await tester.tap(find.text('Slide'));
+    await tester.pump();
+    await openCard(tester);
+  });
+
+  testWidgets('Gatefold swaps the options and opens', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 3200);
+    tester.view.devicePixelRatio = 2.5;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Gatefold'));
+    await tester.pump();
+    expect(find.text('Background'), findsNothing);
+    expect(find.text('Paper colour'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('Ivory paper'));
+    await tester.tap(find.bySemanticsLabel('Burgundy seal'));
+    await tester.pump();
+    expect(find.byType(DoorHalf), findsNothing);
+    await openCard(tester);
+
+    await tester.tap(find.byTooltip('Back to design'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('Zoom'));
     await tester.pump();
     await openCard(tester);
   });

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:wedding_cart/card_config.dart';
 import 'package:wedding_cart/opening/bow_painter.dart';
+import 'package:wedding_cart/opening/gatefold_painter.dart';
 import 'package:wedding_cart/opening/opening_screen.dart';
 
-/// Lets the user pick the cover photo, bow and opening animation, then plays
-/// the result.
+/// Lets the user pick the card style, its colours and the opening animation,
+/// then plays the result.
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
 
@@ -40,55 +41,98 @@ class _SetupScreenState extends State<SetupScreen> {
           Center(child: _Preview(config: _config)),
           const SizedBox(height: 24),
           _Section(
-            title: 'Background',
-            child: Row(
-              children: [
-                for (final photo in CoverPhoto.values) ...[
-                  if (photo.index > 0) const SizedBox(width: 12),
-                  Expanded(
-                    child: _PhotoOption(
-                      photo: photo,
-                      selected: photo == _config.photo,
-                      onTap: () => _update(_config.copyWith(photo: photo)),
-                    ),
+            title: 'Card style',
+            child: SegmentedButton<CardStyle>(
+              showSelectedIcon: false,
+              segments: [
+                for (final style in CardStyle.values)
+                  ButtonSegment(
+                    value: style,
+                    icon: Icon(style.icon),
+                    label: Text(style.label),
                   ),
+              ],
+              selected: {_config.style},
+              onSelectionChanged: (selection) =>
+                  _update(_config.copyWith(style: selection.single)),
+            ),
+          ),
+          if (_config.style == CardStyle.gatefold) ...[
+            _Section(
+              title: 'Paper colour',
+              child: Row(
+                children: [
+                  for (final paper in PaperColor.values)
+                    Expanded(
+                      child: _Swatch(
+                        label: paper.label,
+                        semanticLabel: '${paper.label} paper',
+                        colors: [
+                          paper.palette.paper,
+                          Color.lerp(paper.palette.paper, Colors.black, 0.15)!,
+                        ],
+                        selected: paper == _config.paper,
+                        onTap: () => _update(_config.copyWith(paper: paper)),
+                      ),
+                    ),
                 ],
-              ],
+              ),
             ),
-          ),
-          _Section(
-            title: 'Bow colour',
-            child: Row(
-              children: [
-                for (final color in BowColor.values)
-                  Expanded(
-                    child: _ColorOption(
-                      color: color,
-                      selected: color == _config.bowColor,
-                      onTap: () => _update(_config.copyWith(bowColor: color)),
-                    ),
-                  ),
-              ],
+            _Section(
+              title: 'Seal colour',
+              child: _accentRow(
+                selected: _config.sealColor,
+                noun: 'seal',
+                onSelected: (color) =>
+                    _update(_config.copyWith(sealColor: color)),
+              ),
             ),
-          ),
-          _Section(
-            title: 'Bow style',
-            child: Row(
-              children: [
-                for (final style in BowStyle.values) ...[
-                  if (style.index > 0) const SizedBox(width: 12),
-                  Expanded(
-                    child: _StyleOption(
-                      style: style,
-                      palette: _config.bowColor.palette,
-                      selected: style == _config.bowStyle,
-                      onTap: () => _update(_config.copyWith(bowStyle: style)),
+          ] else ...[
+            _Section(
+              title: 'Background',
+              child: Row(
+                children: [
+                  for (final photo in CoverPhoto.values) ...[
+                    if (photo.index > 0) const SizedBox(width: 12),
+                    Expanded(
+                      child: _PhotoOption(
+                        photo: photo,
+                        selected: photo == _config.photo,
+                        onTap: () => _update(_config.copyWith(photo: photo)),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
+            _Section(
+              title: 'Bow colour',
+              child: _accentRow(
+                selected: _config.bowColor,
+                noun: 'bow',
+                onSelected: (color) =>
+                    _update(_config.copyWith(bowColor: color)),
+              ),
+            ),
+            _Section(
+              title: 'Bow style',
+              child: Row(
+                children: [
+                  for (final style in BowStyle.values) ...[
+                    if (style.index > 0) const SizedBox(width: 12),
+                    Expanded(
+                      child: _StyleOption(
+                        style: style,
+                        palette: _config.bowColor.palette,
+                        selected: style == _config.bowStyle,
+                        onTap: () => _update(_config.copyWith(bowStyle: style)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           _Section(
             title: 'Opening animation',
             child: SegmentedButton<OpeningStyle>(
@@ -119,6 +163,32 @@ class _SetupScreenState extends State<SetupScreen> {
       ),
     );
   }
+
+  /// One swatch per satin colour, for the bow or the seal ([noun]).
+  Widget _accentRow({
+    required AccentColor selected,
+    required String noun,
+    required ValueChanged<AccentColor> onSelected,
+  }) {
+    return Row(
+      children: [
+        for (final color in AccentColor.values)
+          Expanded(
+            child: _Swatch(
+              label: color.label,
+              semanticLabel: '${color.label} $noun',
+              colors: [
+                color.palette.light,
+                color.palette.base,
+                color.palette.dark,
+              ],
+              selected: color == selected,
+              onTap: () => onSelected(color),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 /// A small, static version of the closed card.
@@ -129,46 +199,58 @@ class _Preview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = config.bowColor.palette;
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
         width: 158,
         height: 280,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: SizedBox.expand(
-                key: ValueKey(config.photo),
-                child: Image(
-                  image: config.photo.image(width: 600),
-                  fit: BoxFit.cover,
-                ),
+        child: switch (config.style) {
+          CardStyle.photoBow => _buildPhotoBow(),
+          CardStyle.gatefold => ColoredBox(
+            // Shows through the gaps between the scallops.
+            color: const Color(0xFF1B1712),
+            child: CustomPaint(
+              painter: GatefoldPainter(
+                paper: config.paper.palette,
+                wax: config.sealColor.palette,
               ),
             ),
-            CustomPaint(
-              painter: RibbonPainter(
-                progress: 0,
-                palette: palette,
-                halfBand: 5,
-              ),
-            ),
-            Center(
-              child: CustomPaint(
-                size: const Size.square(64),
-                painter: BowPainter(
-                  progress: 0,
-                  palette: palette,
-                  style: config.bowStyle,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        },
       ),
+    );
+  }
+
+  Widget _buildPhotoBow() {
+    final palette = config.bowColor.palette;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: SizedBox.expand(
+            key: ValueKey(config.photo),
+            child: Image(
+              image: config.photo.image(width: 600),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        CustomPaint(
+          painter: RibbonPainter(progress: 0, palette: palette, halfBand: 5),
+        ),
+        Center(
+          child: CustomPaint(
+            size: const Size.square(64),
+            painter: BowPainter(
+              progress: 0,
+              palette: palette,
+              style: config.bowStyle,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -264,26 +346,32 @@ class _PhotoOption extends StatelessWidget {
   }
 }
 
-class _ColorOption extends StatelessWidget {
-  const _ColorOption({
-    required this.color,
+/// A round colour sample with its name underneath.
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    required this.label,
+    required this.semanticLabel,
+    required this.colors,
     required this.selected,
     required this.onTap,
   });
 
-  final BowColor color;
+  final String label;
+  final String semanticLabel;
+
+  /// Shaded diagonally across the swatch, lightest first.
+  final List<Color> colors;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final palette = color.palette;
 
     return Semantics(
       button: true,
       selected: selected,
-      label: '${color.label} bow',
+      label: semanticLabel,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -306,10 +394,11 @@ class _ColorOption extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    border: Border.all(color: scheme.outlineVariant),
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: [palette.light, palette.base, palette.dark],
+                      colors: colors,
                     ),
                   ),
                 ),
@@ -317,7 +406,7 @@ class _ColorOption extends StatelessWidget {
               const SizedBox(height: 4),
               ExcludeSemantics(
                 child: Text(
-                  color.label,
+                  label,
                   maxLines: 1,
                   softWrap: false,
                   overflow: TextOverflow.fade,
